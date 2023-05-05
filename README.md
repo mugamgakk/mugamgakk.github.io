@@ -1,1 +1,0 @@
-# mugamgakk.github.io
