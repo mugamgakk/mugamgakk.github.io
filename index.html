@@ -1,12 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-</head>
-<body>
-  hello
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  </head>
+  <body>
+    <script>
+      var config = {
+        width: 800,
+        height: 600,
+        type: Phaser.AUTO,
+        parent: "game-container",
+        scene: {
+          preload,
+          create,
+          update,
+        },
+        physics: {
+          default: "arcade",
+        },
+      };
+
+      var game = new Phaser.Game(config);
+
+      var player; // 플레이어 객체
+      var cursors;
+      var playerSpeed = 100;
+
+      // 정적 파일 로드
+      function preload() {
+        // 1개의 png 스프레드 이미지
+        // 캐릭터
+        this.load.spritesheet("character", "./assets/character.png", {
+          frameWidth: 16,
+          frameHeight: 16,
+        });
+        // 땅
+        this.load.image("ground", "/assets/ground.png");
+        this.load.image("stone", "/assets/stone.png");
+      }
+
+      // 마운트 될때
+      function create() {
+        // 캐릭터
+        player = this.physics.add.sprite(100, 500, "character", 0);
+        player.setCollideWorldBounds(true); // 화면 경계에서 멈춤
+        player.body.setGravityY(400); // 플레이어에 y 축 방향으로 300의 중력을 적용합니다.
+        // setScale 크기 키우기
+        player.setScale(2).refreshBody();
+
+        // '땅' 객체를 생성합니다.
+        var ground = this.physics.add.staticGroup();
+
+        // 땅 width 100%
+        var groundSprite = ground.create(
+          config.width / 2,
+          config.height,
+          "ground"
+        );
+        groundSprite.displayWidth = config.width;
+        groundSprite.displayHeight = 100;
+        groundSprite.refreshBody();
+
+        // 플레이어와 땅 사이의 충돌을 설정합니다.
+        this.physics.add.collider(player, ground);
+
+        // 걷는 애니메이션 정의
+        this.anims.create({
+          key: "right-walk", // 애니메이션 이름
+          frames: this.anims.generateFrameNumbers("character", {
+            start: 10,
+            end: 11,
+          }),
+          frameRate: 10,
+        });
+        // 걷는 애니메이션 정의
+        this.anims.create({
+          key: "left-walk", // 애니메이션 이름
+          frames: this.anims.generateFrameNumbers("character", {
+            start: 14,
+            end: 16,
+          }),
+          frameRate: 10,
+        });
+
+        createEle(this);
+
+        // 키보드 객체
+        cursors = this.input.keyboard.createCursorKeys();
+      }
+
+      // 리퀘스트 애니메이션 프레임
+      function update() {
+        // player.body.touching.down : 땅을 밟았을시
+        if (cursors.space.isDown && player.body.touching.down) {
+          player.setVelocityY(-200);
+        }
+
+        if (cursors.left.isDown) {
+          player.setVelocityX(-playerSpeed);
+          //   player.setFrame(14); // 14번째 이미지
+          player.anims.play("left-walk", true);
+        } else if (cursors.right.isDown) {
+          player.setVelocityX(playerSpeed);
+          player.anims.play("right-walk", true);
+        } else {
+          // 움직이지않았을때
+          player.setVelocityX(0); // 플레이어의 수평 속도를 0으로 설정
+          player.setFrame(0);
+          // player.anims.stop(); // 애니메이션을 중지
+        }
+
+        // 모든 물체에 대해
+        objects.children.iterate(function (object) {
+          // 물체가 화면 밑으로 완전히 나갔다면
+          if (object.y > config.height) {
+            // 물체를 다시 화면 위로 이동
+            object.y = 0;
+            // x 위치를 랜덤하게 변경
+            object.x = Phaser.Math.Between(0, config.width);
+            // 속도도 랜덤하게 변경
+            object.setVelocityY(Phaser.Math.Between(200, 250));
+          }
+        });
+      }
+
+      function createEle(obj) {
+        // // 물체 생성
+        // var object = obj.physics.add.sprite(
+        //   Phaser.Math.Between(0, config.width), // x position
+        //   0, // y position
+        //   "object"
+        // );
+
+        // // 물체가 아래쪽으로 떨어지도록 속도 설정
+        // object.setVelocityY(Phaser.Math.Between(50, 100));
+
+        // // 플레이어와 물체 사이의 충돌을 설정
+        // obj.physics.add.collider(player, object, gameOver, null, obj);
+
+        // 물체 그룹 생성
+        // var objects = obj.physics.add.group({
+        //   key: "object",
+        //   repeat: 10, // 물체를 10개 생성
+        //   setXY: { x: 12, y: 0, stepX: 70 },
+        // });
+
+        // // 각 물체에 대해 아래쪽으로 떨어지도록 속도 설정
+        // objects.children.iterate(function (object) {
+        //   object.setVelocityY(Phaser.Math.Between(50, 100));
+        // });
+
+        // // 플레이어와 물체 사이의 충돌을 설정
+        // obj.physics.add.collider(player, objects, gameOver, null, obj);
+
+        // 물체 그룹 생성
+        objects = obj.physics.add.group();
+
+        // 10개의 물체를 랜덤한 위치에 생성
+        for (let i = 0; i < 20; i++) {
+          let x = Phaser.Math.Between(0, config.width);
+          let y = Phaser.Math.Between(0, 200);
+          let object = objects.create(x, y, "stone");
+          object.setScale(0.6).refreshBody();
+          object.setVelocityY(Phaser.Math.Between(50, 100));
+        }
+
+        // 플레이어와 물체 사이의 충돌을 설정
+        obj.physics.add.overlap(player, objects, gameOver, null, obj);
+      }
+
+      function gameOver() {
+        this.physics.pause(); // 물리 시스템을 멈춤
+        player.setTint(0xff0000); // 플레이어 색을 빨간색으로 변경
+        player.anims.stop(); // 플레이어의 애니메이션을 멈춤
+      }
+    </script>
+  </body>
 </html>
