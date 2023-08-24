@@ -5,10 +5,21 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Document</title>
         <link rel="manifest" href="/manifest.json" />
+
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            header {
+                height: 60px;
+                background-color: dodgerblue;
+            }
+        </style>
     </head>
     <body>
-        test
-
+        <header></header>
         <script>
             if ("serviceWorker" in navigator) {
                 navigator.serviceWorker
@@ -19,6 +30,53 @@
                     .catch(function (error) {
                         console.log("Service Worker 등록 실패:", error);
                     });
+            }
+            // 1. 서버로부터 VAPID 공개 키 받아오기
+            fetch("http://192.168.11.178:5000/sendpublickey")
+                .then((response) => response.text())
+                .then((publicVapidKey) => {
+                    // VAPID 공개 키를 사용하여 푸시 알림 구독
+                    subscribeUserToPush(publicVapidKey);
+                });
+
+            // 2. VAPID 공개 키를 사용한 푸시 알림 구독 함수
+            function subscribeUserToPush(publicKey) {
+                navigator.serviceWorker.ready
+                    .then((registration) => {
+                        // 구독 옵션 설정. 'userVisibleOnly'는 알림이 사용자에게 표시되어야 함을 의미합니다.
+                        // 'applicationServerKey'는 공개 VAPID 키로, 서버와 통신하기 위한 것입니다.
+                        const subscribeOptions = {
+                            userVisibleOnly: true,
+                            applicationServerKey: urlBase64ToUint8Array(publicKey),
+                        };
+                        return registration.pushManager.subscribe(subscribeOptions);
+                    })
+                    .then((subscription) => {
+                        // 구독 성공 후, 구독 정보서버에 저장하는 로직
+
+                        fetch("http://192.168.11.178:5000/save-subscription", {
+                            method: "POST",
+                            body: JSON.stringify(subscription),
+                            headers: {
+                                "content-type": "application/json",
+                            },
+                        });
+                    });
+            }
+
+            // 유틸리티 함수: VAPID 키 문자열을 Uint8Array로 변환합니다.
+            // VAPID 키는 웹 푸시 서비스와의 안전한 통신을 위한 것입니다.
+            function urlBase64ToUint8Array(base64String) {
+                const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+                const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+
+                const rawData = window.atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+
+                for (let i = 0; i < rawData.length; ++i) {
+                    outputArray[i] = rawData.charCodeAt(i);
+                }
+                return outputArray;
             }
         </script>
     </body>
